@@ -75,6 +75,11 @@ jobs:
       - name: Create models directory
         run: mkdir -p models
 
+      - name: Install docker-compose
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y docker-compose
+
       - name: Build services with docker-compose
         run: docker-compose build
 
