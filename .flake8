@@ -1,0 +1,22 @@
+[flake8]
+max-line-length = 127
+exclude =
+    .git,
+    __pycache__,
+    .env,
+    venv,
+    env,
+    .venv,
+    models,
+    logs,
+    *.egg-info,
+    .pytest_cache,
+    .mypy_cache,
+    build,
+    dist
+ignore =
+    # W503: line break before binary operator (conflicts with black)
+    W503,
+    # E203: whitespace before ':' (conflicts with black)
+    E203
+max-complexity = 10
