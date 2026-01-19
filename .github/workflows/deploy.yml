@@ -14,10 +14,15 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Deploy to ${{ github.event.inputs.environment || 'production' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     environment:
       name: ${{ github.event.inputs.environment || 'production' }}
     

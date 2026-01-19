@@ -7,10 +7,15 @@ on:
     branches: [ main, develop ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint Python Code
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -35,6 +40,8 @@ jobs:
   docker-build:
     name: Docker Build Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         service: [model-service, prediction-service, ui-gateway-service]
@@ -58,6 +65,8 @@ jobs:
   docker-compose-test:
     name: Docker Compose Integration Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: [lint, docker-build]
     steps:
       - name: Checkout code
