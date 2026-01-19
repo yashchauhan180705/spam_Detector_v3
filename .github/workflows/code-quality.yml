@@ -94,9 +94,9 @@ jobs:
 
       - name: Run pylint
         run: |
-          pylint --exit-zero **/*.py || true
+          find . -name "*.py" -not -path "*/venv/*" -not -path "*/.env/*" | xargs pylint --exit-zero || echo "Pylint analysis complete"
 
       - name: Calculate code complexity
         run: |
-          radon cc . -a --total-average || true
-          radon mi . --min B || true
+          radon cc . -a --total-average || echo "Complexity analysis complete"
+          radon mi . --min B || echo "Maintainability analysis complete"

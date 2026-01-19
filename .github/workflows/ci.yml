@@ -80,47 +80,30 @@ jobs:
       - name: Check services are running
         run: docker-compose ps
 
-      - name: Test Model Service Health
+      - name: Test Services Health
         run: |
-          for i in {1..10}; do
-            if curl -f http://localhost:5001/health; then
-              echo "Model service is healthy"
-              exit 0
-            fi
-            echo "Attempt $i failed, retrying..."
-            sleep 5
-          done
-          echo "Model service health check failed"
-          docker-compose logs model-service
-          exit 1
-
-      - name: Test Prediction Service Health
-        run: |
-          for i in {1..10}; do
-            if curl -f http://localhost:5002/health; then
-              echo "Prediction service is healthy"
-              exit 0
-            fi
-            echo "Attempt $i failed, retrying..."
-            sleep 5
-          done
-          echo "Prediction service health check failed"
-          docker-compose logs prediction-service
-          exit 1
-
-      - name: Test UI Gateway Service Health
-        run: |
-          for i in {1..10}; do
-            if curl -f http://localhost:5000/; then
-              echo "UI Gateway service is healthy"
-              exit 0
-            fi
-            echo "Attempt $i failed, retrying..."
-            sleep 5
-          done
-          echo "UI Gateway service health check failed"
-          docker-compose logs ui-gateway-service
-          exit 1
+          # Function to check service health
+          check_service_health() {
+            local service_name=$1
+            local url=$2
+            echo "Testing $service_name health..."
+            for i in {1..10}; do
+              if curl -f $url; then
+                echo "✓ $service_name is healthy"
+                return 0
+              fi
+              echo "Attempt $i failed, retrying..."
+              sleep 5
+            done
+            echo "✗ $service_name health check failed"
+            docker-compose logs $service_name
+            return 1
+          }
+          
+          # Check all services
+          check_service_health "model-service" "http://localhost:5001/health"
+          check_service_health "prediction-service" "http://localhost:5002/health"
+          check_service_health "ui-gateway-service" "http://localhost:5000/"
 
       - name: Show logs on failure
         if: failure()
