@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Fine-tune {{ model_name }} - SpamShield{% endblock %}
+{% block page_title %}Fine-tune Model{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h2 class="section-title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Fine-tune Model
+    </h2>
+    <p class="section-desc">Improve <strong style="color: var(--primary-light);">{{ model_name }}</strong> with additional training data</p>
+</div>
+
+{% if metadata %}
+<section class="form-section animate-slideUp" style="margin-bottom: 1.5rem;">
+    <h3 class="form-section-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="16" x2="12" y2="12"/>
+            <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        Current Model Info
+    </h3>
+    <div class="info-grid">
+        <div class="info-item">
+            <span class="label">Accuracy</span>
+            <span class="value">
+                {% if metadata.accuracy %}
+                    <span class="accuracy-badge {% if metadata.accuracy > 0.8 %}high{% elif metadata.accuracy > 0.6 %}medium{% else %}low{% endif %}">
+                        {{ "%.1f"|format(metadata.accuracy * 100) }}%
+                    </span>
+                {% else %}
+                    N/A
+                {% endif %}
+            </span>
+        </div>
+        <div class="info-item">
+            <span class="label">Training Samples</span>
+            <span class="value">{{ metadata.training_samples | default('N/A') }}</span>
+        </div>
+        <div class="info-item">
+            <span class="label">Created</span>
+            <span class="value">{{ metadata.timestamp[:10] if metadata.timestamp else 'N/A' }}</span>
+        </div>
+        {% if metadata.rl_updates %}
+        <div class="info-item">
+            <span class="label">RL Updates</span>
+            <span class="value"><span class="badge badge-success">{{ metadata.rl_updates }}</span></span>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+<section class="form-section animate-slideUp">
+    <h3 class="form-section-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        Upload Additional Data
+    </h3>
+    <form action="{{ url_for('models.finetune_model', model_name=model_name) }}" method="POST" enctype="multipart/form-data" id="finetuneForm">
+        <div class="form-group">
+            <label class="form-label" for="dataset">📁 Upload Additional Dataset</label>
+            <input type="file" id="dataset" name="dataset" class="form-input" accept=".csv,.xlsx,.xls,.json" required style="padding: 0.5rem;">
+            <p class="form-hint">Supported formats: CSV, Excel, JSON</p>
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="text_column">📝 Text Column</label>
+                <select id="text_column" name="text_column" class="form-select" required disabled>
+                    <option value="">Select column...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="label_column">🏷️ Label Column</label>
+                <select id="label_column" name="label_column" class="form-select" required disabled>
+                    <option value="">Select column...</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="timesteps">🔄 Fine-tune Steps</label>
+            <input type="number" id="timesteps" name="timesteps" class="form-input" value="25000"
+                   min="1000" max="500000" step="1000" required>
+            <p class="form-hint">Recommended: 25,000 - 100,000 for fine-tuning</p>
+        </div>
+
+        <div style="background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+            <p style="color: var(--primary-light); margin: 0;">
+                ℹ️ Fine-tuning will create a new model named: <strong>{{ model_name }}_finetuned</strong>
+            </p>
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('models.list_models') }}" class="btn btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+                Cancel
+            </a>
+            <button type="submit" class="btn btn-primary" id="finetuneBtn" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Start Fine-tuning
+            </button>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('dataset').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('dataset', file);
+
+    try {
+        const response = await fetch('{{ url_for("models.preview_columns") }}', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+
+        const textSelect = document.getElementById('text_column');
+        const labelSelect = document.getElementById('label_column');
+
+        textSelect.innerHTML = '<option value="">Select column...</option>';
+        labelSelect.innerHTML = '<option value="">Select column...</option>';
+
+        data.columns.forEach(col => {
+            textSelect.innerHTML += `<option value="${col}">${col}</option>`;
+            labelSelect.innerHTML += `<option value="${col}">${col}</option>`;
+        });
+
+        textSelect.disabled = false;
+        labelSelect.disabled = false;
+        document.getElementById('finetuneBtn').disabled = false;
+
+    } catch (err) {
+        alert('Error reading file: ' + err.message);
+    }
+});
+
+document.getElementById('finetuneForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('finetuneBtn');
+    btn.disabled = true;
+    btn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
+            <line x1="12" y1="2" x2="12" y2="6"/>
+            <line x1="12" y1="18" x2="12" y2="22"/>
+            <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/>
+            <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+            <line x1="2" y1="12" x2="6" y2="12"/>
+            <line x1="18" y1="12" x2="22" y2="12"/>
+            <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
+            <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
+        </svg>
+        Fine-tuning... Please wait`;
+});
+</script>
+{% endblock %}
+

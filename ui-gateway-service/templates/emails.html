@@ -1,0 +1,1030 @@
+{% extends "base.html" %}
+{% block title %}Email Analysis - SpamShield{% endblock %}
+{% block page_title %}Email Analysis{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h2 class="section-title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        Email Analysis
+    </h2>
+    <p class="section-desc">Analyze emails for spam detection with AI-powered classification and feedback learning</p>
+</div>
+
+<!-- MODEL SELECTION SECTION -->
+<section class="form-section animate-slideUp">
+    <h3 class="form-section-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        Select Active Model
+    </h3>
+    <p class="section-desc" style="margin-bottom: 1rem;">Choose a trained model for spam classification</p>
+
+    {% if models %}
+    <div class="table-responsive">
+        <table class="data-table model-select-table">
+            <thead>
+                <tr>
+                    <th width="50">Select</th>
+                    <th>Model Name</th>
+                    <th>Accuracy</th>
+                    <th>Training Samples</th>
+                    <th>RL Updates</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for model in models %}
+                <tr class="{% if selected_model == model.name %}selected-row{% endif %}">
+                    <td>
+                        <input type="radio" name="model_select" value="{{ model.name }}"
+                               id="model_{{ model.name }}"
+                               {% if selected_model == model.name %}checked{% endif %}
+                               onchange="selectModel('{{ model.name }}')">
+                    </td>
+                    <td>
+                        <label for="model_{{ model.name }}" class="model-label">{{ model.name }}</label>
+                    </td>
+                    <td>
+                        {% if model.metadata and model.metadata.accuracy is defined %}
+                            <span class="accuracy-badge {% if model.metadata.accuracy > 0.8 %}high{% elif model.metadata.accuracy > 0.6 %}medium{% else %}low{% endif %}">
+                                {{ "%.1f"|format(model.metadata.accuracy * 100) }}%
+                            </span>
+                        {% else %}
+                            <span class="accuracy-badge unknown">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ model.metadata.training_samples if model.metadata else 'N/A' }}</td>
+                    <td>
+                        {% if model.metadata and model.metadata.rl_updates %}
+                            <span class="badge badge-success">{{ model.metadata.rl_updates }}</span>
+                        {% else %}
+                            <span class="badge badge-neutral">0</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="selected-model-display">
+        <span class="label">Active Model:</span>
+        <span id="activeModelName" class="value">{{ selected_model or 'None selected' }}</span>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding: 2rem; text-align: center;">
+        <p style="color: var(--text-muted);">No models available. <a href="{{ url_for('models.create_model') }}" style="color: var(--primary); font-weight: 500;">Create one first</a>.</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- EMAIL FETCH SECTION -->
+<section class="form-section animate-slideUp">
+    <h3 class="form-section-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Fetch Emails (IMAP)
+    </h3>
+    <form id="fetchForm" onsubmit="return fetchEmails(event)">
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="email">Email Address</label>
+                <input type="email" id="email" name="email" class="form-input" placeholder="your.email@gmail.com" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="password">App Password</label>
+                <input type="password" id="password" name="password" class="form-input" placeholder="App-specific password" required>
+            </div>
+        </div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="imap_server">IMAP Server</label>
+                <select id="imap_server" name="imap_server" class="form-select">
+                    <option value="imap.gmail.com">Gmail (imap.gmail.com)</option>
+                    <option value="imap.yahoo.com">Yahoo (imap.yahoo.com)</option>
+                    <option value="imap.outlook.com">Outlook (imap.outlook.com)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="max_emails">Max Emails to Fetch</label>
+                <input type="number" id="max_emails" name="max_emails" class="form-input" value="50" min="5" max="10000">
+                <p class="form-hint">💡 Recommended: 50-200 emails for best performance</p>
+            </div>
+        </div>
+        <div class="form-actions" style="border-top: none; padding-top: 0; margin-top: 0.5rem;">
+            <button type="submit" class="btn btn-primary" id="fetchBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Fetch Emails
+            </button>
+        </div>
+    </form>
+</section>
+
+<!-- COPY-PASTE ANALYSIS SECTION -->
+<section class="form-section animate-slideUp">
+    <h3 class="form-section-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Quick Analysis
+    </h3>
+    <form id="analyzeForm" onsubmit="return analyzeContent(event)">
+        <div class="form-group">
+            <label class="form-label" for="content">Paste Email Content</label>
+            <textarea id="content" name="content" class="form-textarea" rows="4"
+                      placeholder="Paste email content here for instant spam detection..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            Analyze
+        </button>
+    </form>
+    <div id="analyzeResult" class="result-box hidden"></div>
+</section>
+
+<!-- EMAILS TABLE WITH FEEDBACK -->
+<section class="animate-slideUp">
+    <div class="section-header">
+        <h2 class="section-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 17H2a3 3 0 003 3h14a3 3 0 003-3zm0-7v7M2 10v7m0-7a3 3 0 013-3h2l2-3h6l2 3h2a3 3 0 013 3"/>
+            </svg>
+            Prediction Results
+        </h2>
+        <p class="section-desc">Click on any email subject to view full content</p>
+    </div>
+
+    <!-- PREDICTION STATISTICS -->
+    <div id="statsSection" class="hidden">
+        <div class="stats-grid">
+            <div class="stat-card total animate-scaleIn stagger-1">
+                <div class="stat-icon">📊</div>
+                <div class="stat-content">
+                    <div class="stat-label">Total Emails</div>
+                    <div class="stat-value" id="statTotal">0</div>
+                </div>
+            </div>
+            <div class="stat-card spam animate-scaleIn stagger-2">
+                <div class="stat-icon">🚫</div>
+                <div class="stat-content">
+                    <div class="stat-label">Spam Detected</div>
+                    <div class="stat-value" id="statSpam">0</div>
+                    <div class="stat-percentage" id="statSpamPercent">0%</div>
+                </div>
+            </div>
+            <div class="stat-card ham animate-scaleIn stagger-3">
+                <div class="stat-icon">✅</div>
+                <div class="stat-content">
+                    <div class="stat-label">Ham (Safe)</div>
+                    <div class="stat-value" id="statHam">0</div>
+                    <div class="stat-percentage" id="statHamPercent">0%</div>
+                </div>
+            </div>
+            <div class="stat-card feedback animate-scaleIn stagger-4">
+                <div class="stat-icon">✏️</div>
+                <div class="stat-content">
+                    <div class="stat-label">Corrections Applied</div>
+                    <div class="stat-value" id="statChanges">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VISUAL CHART -->
+        <div class="chart-card" style="margin-bottom: 1.5rem;">
+            <div class="chart-header">
+                <h3 class="chart-title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    Classification Distribution
+                </h3>
+            </div>
+            <div class="chart-body">
+                <div class="chart-wrapper">
+                    <div class="bar-chart">
+                        <div class="bar-item">
+                            <div class="bar-label">Spam</div>
+                            <div class="bar-track">
+                                <div class="bar-fill spam-bar" id="spamBar" style="width: 0%"></div>
+                            </div>
+                            <div class="bar-count" id="spamCount">0</div>
+                        </div>
+                        <div class="bar-item">
+                            <div class="bar-label">Ham</div>
+                            <div class="bar-track">
+                                <div class="bar-fill ham-bar" id="hamBar" style="width: 0%"></div>
+                            </div>
+                            <div class="bar-count" id="hamCount">0</div>
+                        </div>
+                    </div>
+                    <div class="pie-chart">
+                        <svg viewBox="0 0 200 200" id="pieChart">
+                            <circle cx="100" cy="100" r="80" fill="var(--bg-tertiary)"/>
+                            <path id="spamSlice" fill="#d87272" d=""/>
+                            <path id="hamSlice" fill="#6bb88a" d=""/>
+                            <text x="100" y="95" text-anchor="middle" fill="var(--text-primary)" font-size="24" font-weight="bold" id="totalText">0</text>
+                            <text x="100" y="118" text-anchor="middle" fill="var(--text-secondary)" font-size="12">Total</text>
+                        </svg>
+                        <div class="pie-legend">
+                            <div class="legend-item">
+                                <span class="legend-color spam"></span>
+                                <span class="legend-label">Spam</span>
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-color ham"></span>
+                                <span class="legend-label">Ham</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <span class="toolbar-text" id="emailCount">{{ emails|length if emails else 0 }} emails loaded</span>
+        </div>
+        <div class="toolbar-right">
+            <button type="button" class="btn btn-secondary" id="feedbackToggle" onclick="toggleFeedback()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Give Feedback
+            </button>
+            <button type="button" class="btn btn-success hidden" id="retrainBtn" onclick="retrainModel()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"/>
+                    <polyline points="1 20 1 14 7 14"/>
+                    <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                </svg>
+                Fine-tune Model
+            </button>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div class="table-responsive">
+            <table class="data-table emails-table" id="emailsTable">
+                <thead>
+                    <tr>
+                        <th>Sender</th>
+                        <th>Subject</th>
+                        <th>Prediction</th>
+                        <th class="feedback-col hidden">Your Correction</th>
+                    </tr>
+                </thead>
+                <tbody id="emailsBody">
+                    {% if emails %}
+                        {% for email in emails %}
+                        <tr data-id="{{ email.id }}" class="clickable-row" onclick="showEmailDetail('{{ email.id }}')">
+                            <td class="sender">{{ email.sender[:35] }}{% if email.sender|length > 35 %}...{% endif %}</td>
+                            <td class="subject">
+                                <span class="subject-text">{{ email.subject }}</span>
+                            </td>
+                            <td>
+                                <span class="prediction-badge {{ 'spam' if email.prediction == 'Spam' else 'ham' }}">
+                                    {{ email.prediction or 'Pending' }}
+                                </span>
+                            </td>
+                            <td class="feedback-col hidden" onclick="event.stopPropagation()">
+                                <div class="feedback-toggle">
+                                    <button type="button"
+                                            class="toggle-btn {% if email.feedback != 'Spam' %}active{% endif %}"
+                                            data-value="Ham"
+                                            onclick="setFeedback(this, 'Ham')">Ham</button>
+                                    <button type="button"
+                                            class="toggle-btn {% if email.feedback == 'Spam' %}active{% endif %}"
+                                            data-value="Spam"
+                                            onclick="setFeedback(this, 'Spam')">Spam</button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr id="emptyRow">
+                        <td colspan="4" class="table-empty">
+                            <div class="empty-icon">📭</div>
+                            <p>No emails loaded yet</p>
+                            <p style="font-size: 0.85rem; margin-top: 0.5rem;">Fetch emails using the form above or paste content for quick analysis</p>
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<!-- EMAIL DETAIL MODAL -->
+<div id="emailModal" class="modal-overlay" onclick="closeEmailModal(event)">
+    <div class="modal-container" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modalSubject">Email Subject</h3>
+            <button class="modal-close" onclick="closeEmailModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="email-meta">
+                <div class="email-meta-item">
+                    <span class="email-meta-label">From</span>
+                    <span class="email-meta-value" id="modalSender">-</span>
+                </div>
+                <div class="email-meta-item">
+                    <span class="email-meta-label">Date</span>
+                    <span class="email-meta-value" id="modalDate">-</span>
+                </div>
+                <div class="email-meta-item">
+                    <span class="email-meta-label">To</span>
+                    <span class="email-meta-value" id="modalReceiver">-</span>
+                </div>
+                <div class="email-meta-item">
+                    <span class="email-meta-label">Classification</span>
+                    <span id="modalPrediction">-</span>
+                </div>
+            </div>
+            <div class="email-content" id="modalContent">
+                Loading email content...
+            </div>
+        </div>
+        <div class="modal-footer">
+            <div id="modalFeedback" class="feedback-toggle">
+                <button type="button" class="toggle-btn" data-value="Ham" onclick="setModalFeedback('Ham')">✅ Ham</button>
+                <button type="button" class="toggle-btn" data-value="Spam" onclick="setModalFeedback('Spam')">🚫 Spam</button>
+            </div>
+            <button class="btn btn-secondary" onclick="closeEmailModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- LOADING OVERLAY -->
+<div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loading-content">
+        <div class="spinner"></div>
+        <p id="loadingText" class="loading-text">Loading...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let feedbackMode = false;
+let emailData = {{ emails | tojson if emails else '[]' | safe }};
+let currentEmailId = null;
+
+async function selectModel(modelName) {
+    try {
+        const response = await fetch('{{ url_for("emails.select_model") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model_name: modelName })
+        });
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('activeModelName').textContent = modelName;
+            document.querySelectorAll('.model-select-table tr').forEach(tr => {
+                tr.classList.remove('selected-row');
+            });
+            document.querySelector(`input[value="${modelName}"]`).closest('tr').classList.add('selected-row');
+        }
+    } catch (err) {
+        console.error('Error selecting model:', err);
+    }
+}
+
+async function fetchEmails(e) {
+    e.preventDefault();
+
+    const activeModel = document.getElementById('activeModelName').textContent;
+    if (activeModel === 'None selected') {
+        alert('⚠️ Please select a model first!');
+        return false;
+    }
+
+    showLoading('Fetching and analyzing emails...');
+
+    const formData = {
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+        imap_server: document.getElementById('imap_server').value,
+        max_emails: document.getElementById('max_emails').value
+    };
+
+    try {
+        const response = await fetch('{{ url_for("emails.fetch_emails") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+        hideLoading();
+
+        if (data.success) {
+            emailData = data.emails;
+
+            // Store original predictions for tracking corrections
+            emailData.forEach(email => {
+                if (!email.original_prediction) {
+                    email.original_prediction = email.prediction;
+                }
+            });
+
+            renderEmails(data.emails);
+            document.getElementById('emailCount').textContent = `${data.count} emails loaded`;
+            updateStats(data.emails);
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    } catch (err) {
+        hideLoading();
+        alert('❌ Error fetching emails: ' + err.message);
+    }
+
+    return false;
+}
+
+async function analyzeContent(e) {
+    e.preventDefault();
+
+    const activeModel = document.getElementById('activeModelName').textContent;
+    if (activeModel === 'None selected') {
+        alert('⚠️ Please select a model first!');
+        return false;
+    }
+
+    const content = document.getElementById('content').value;
+    if (!content.trim()) {
+        alert('Please enter email content');
+        return false;
+    }
+
+    try {
+        const response = await fetch('{{ url_for("emails.analyze_content") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: content })
+        });
+
+        const data = await response.json();
+        const resultBox = document.getElementById('analyzeResult');
+        resultBox.classList.remove('hidden');
+
+        if (data.success) {
+            const isSpam = data.prediction === 'Spam';
+            resultBox.className = `result-box ${isSpam ? 'spam' : 'ham'}`;
+            resultBox.innerHTML = `
+                <strong>${isSpam ? '🚫' : '✅'} Result: ${data.prediction}</strong>
+                <span class="model-info">Model: ${data.model_used}</span>
+            `;
+        } else {
+            resultBox.className = 'result-box error';
+            resultBox.innerHTML = `<strong>❌ Error:</strong> ${data.error}`;
+        }
+    } catch (err) {
+        alert('Error analyzing content: ' + err.message);
+    }
+
+    return false;
+}
+
+function renderEmails(emails) {
+    const tbody = document.getElementById('emailsBody');
+
+    if (!emails || emails.length === 0) {
+        tbody.innerHTML = `
+            <tr id="emptyRow">
+                <td colspan="4" class="table-empty">
+                    <div class="empty-icon">📭</div>
+                    <p>No emails loaded yet</p>
+                </td>
+            </tr>`;
+        document.getElementById('statsSection').classList.add('hidden');
+        return;
+    }
+
+    document.getElementById('statsSection').classList.remove('hidden');
+
+    tbody.innerHTML = emails.map((email, index) => {
+        // Store original prediction if not already stored
+        if (!email.original_prediction) {
+            email.original_prediction = email.prediction;
+        }
+
+        return `
+        <tr data-id="${email.id}" class="clickable-row animate-fadeIn" style="animation-delay: ${index * 0.03}s" onclick="showEmailDetail('${email.id}')">
+            <td class="sender">${email.sender ? (email.sender.length > 35 ? email.sender.substring(0, 35) + '...' : email.sender) : 'Unknown'}</td>
+            <td class="subject">
+                <span class="subject-text">${email.subject || 'No Subject'}</span>
+            </td>
+            <td>
+                <span class="prediction-badge ${email.prediction === 'Spam' ? 'spam' : 'ham'}">
+                    ${email.prediction || 'Pending'}
+                </span>
+            </td>
+            <td class="feedback-col ${feedbackMode ? '' : 'hidden'}" onclick="event.stopPropagation()">
+                <div class="feedback-toggle">
+                    <button type="button"
+                            class="toggle-btn ${email.prediction !== 'Spam' ? 'active' : ''}"
+                            data-value="Ham"
+                            onclick="setFeedback(this, 'Ham')">Ham</button>
+                    <button type="button"
+                            class="toggle-btn ${email.prediction === 'Spam' ? 'active' : ''}"
+                            data-value="Spam"
+                            onclick="setFeedback(this, 'Spam')">Spam</button>
+                </div>
+            </td>
+        </tr>
+    `;
+    }).join('');
+}
+
+function updateStats(emails) {
+    const total = emails.length;
+    const spamCount = emails.filter(e => e.prediction === 'Spam').length;
+    const hamCount = emails.filter(e => e.prediction === 'Ham').length;
+
+    // Count emails where feedback was given and is different from original prediction
+    const feedbackChanges = emails.filter(e => {
+        // If feedback exists and prediction was changed
+        return e.feedback && e.feedback !== (e.original_prediction || e.feedback);
+    }).length;
+
+    // Animate stat values
+    animateValue(document.getElementById('statTotal'), 0, total, 800);
+    animateValue(document.getElementById('statSpam'), 0, spamCount, 800);
+    animateValue(document.getElementById('statHam'), 0, hamCount, 800);
+    document.getElementById('statChanges').textContent = feedbackChanges;
+
+    const spamPercent = total > 0 ? ((spamCount / total) * 100).toFixed(1) : 0;
+    const hamPercent = total > 0 ? ((hamCount / total) * 100).toFixed(1) : 0;
+
+    document.getElementById('statSpamPercent').textContent = `${spamPercent}%`;
+    document.getElementById('statHamPercent').textContent = `${hamPercent}%`;
+
+    // Update chart with animation
+    setTimeout(() => {
+        document.getElementById('spamBar').style.width = `${spamPercent}%`;
+        document.getElementById('hamBar').style.width = `${hamPercent}%`;
+    }, 100);
+
+    document.getElementById('spamCount').textContent = spamCount;
+    document.getElementById('hamCount').textContent = hamCount;
+    document.getElementById('totalText').textContent = total;
+
+    // Pie chart update
+    updatePieChart(spamCount, hamCount, total);
+}
+
+function animateValue(element, start, end, duration) {
+    if (start === end) {
+        element.textContent = end;
+        return;
+    }
+    const range = end - start;
+    const increment = range / (duration / 16);
+    let current = start;
+
+    const timer = setInterval(() => {
+        current += increment;
+        if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+            current = end;
+            clearInterval(timer);
+        }
+        element.textContent = Math.floor(current);
+    }, 16);
+}
+
+function updatePieChart(spamCount, hamCount, total) {
+    if (total === 0) return;
+
+    const cx = 100, cy = 100, radius = 80;
+    const spamAngle = (spamCount / total) * 360;
+    const hamAngle = (hamCount / total) * 360;
+
+    const spamSlice = document.getElementById('spamSlice');
+    const hamSlice = document.getElementById('hamSlice');
+
+    if (spamCount === 0) {
+        spamSlice.setAttribute('d', '');
+    } else if (spamCount === total) {
+        spamSlice.setAttribute('d', `M ${cx},${cy} m -${radius},0 a ${radius},${radius} 0 1,0 ${radius*2},0 a ${radius},${radius} 0 1,0 -${radius*2},0`);
+    } else {
+        const spamRad = (spamAngle * Math.PI) / 180;
+        const spamX = cx + radius * Math.cos(spamRad - Math.PI / 2);
+        const spamY = cy + radius * Math.sin(spamRad - Math.PI / 2);
+        const largeArc = spamAngle > 180 ? 1 : 0;
+        spamSlice.setAttribute('d', `M ${cx},${cy} L ${cx},${cy - radius} A ${radius},${radius} 0 ${largeArc},1 ${spamX},${spamY} Z`);
+    }
+
+    if (hamCount === 0) {
+        hamSlice.setAttribute('d', '');
+    } else if (hamCount === total) {
+        hamSlice.setAttribute('d', `M ${cx},${cy} m -${radius},0 a ${radius},${radius} 0 1,0 ${radius*2},0 a ${radius},${radius} 0 1,0 -${radius*2},0`);
+    } else {
+        const hamStartAngle = spamAngle;
+        const hamRad1 = (hamStartAngle * Math.PI) / 180;
+        const hamRad2 = ((hamStartAngle + hamAngle) * Math.PI) / 180;
+        const hamX1 = cx + radius * Math.cos(hamRad1 - Math.PI / 2);
+        const hamY1 = cy + radius * Math.sin(hamRad1 - Math.PI / 2);
+        const hamX2 = cx + radius * Math.cos(hamRad2 - Math.PI / 2);
+        const hamY2 = cy + radius * Math.sin(hamRad2 - Math.PI / 2);
+        const largeArc = hamAngle > 180 ? 1 : 0;
+        hamSlice.setAttribute('d', `M ${cx},${cy} L ${hamX1},${hamY1} A ${radius},${radius} 0 ${largeArc},1 ${hamX2},${hamY2} Z`);
+    }
+}
+
+function toggleFeedback() {
+    feedbackMode = !feedbackMode;
+    const cols = document.querySelectorAll('.feedback-col');
+    const retrainBtn = document.getElementById('retrainBtn');
+    const toggleBtn = document.getElementById('feedbackToggle');
+
+    cols.forEach(col => col.classList.toggle('hidden', !feedbackMode));
+    retrainBtn.classList.toggle('hidden', !feedbackMode);
+
+    if (feedbackMode) {
+        toggleBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+            Cancel Feedback`;
+        toggleBtn.classList.remove('btn-secondary');
+        toggleBtn.classList.add('btn-warning');
+    } else {
+        toggleBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            Give Feedback`;
+        toggleBtn.classList.remove('btn-warning');
+        toggleBtn.classList.add('btn-secondary');
+    }
+}
+
+function setFeedback(btn, value) {
+    const row = btn.closest('tr');
+    const emailId = row.dataset.id;
+
+    row.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const email = emailData.find(e => e.id === emailId);
+    if (email) {
+        const oldPrediction = email.prediction;
+        email.feedback = value;
+
+        // Immediately update the prediction in UI to match feedback
+        email.prediction = value;
+
+        // Update the prediction badge in the table
+        const predictionBadge = row.querySelector('.prediction-badge');
+        if (predictionBadge) {
+            predictionBadge.className = `prediction-badge ${value === 'Spam' ? 'spam' : 'ham'}`;
+            predictionBadge.textContent = value;
+        }
+
+        // Show visual indicator that this was corrected
+        if (value !== oldPrediction) {
+            row.style.background = 'linear-gradient(90deg, rgba(123, 196, 154, 0.15), transparent)';
+            row.style.borderLeft = '3px solid var(--success)';
+
+            // Add checkmark animation
+            const badge = row.querySelector('.prediction-badge');
+            if (badge) {
+                badge.style.animation = 'none';
+                setTimeout(() => {
+                    badge.style.animation = 'pulse 0.5s ease';
+                }, 10);
+            }
+        } else {
+            row.style.background = '';
+            row.style.borderLeft = '';
+        }
+
+        // Auto-save feedback to server
+        autoSaveFeedback(email);
+
+        // Update statistics immediately
+        updateStats(emailData);
+    }
+}
+
+// Auto-save feedback without confirmation
+async function autoSaveFeedback(email) {
+    const activeModel = document.getElementById('activeModelName').textContent;
+    if (activeModel === 'None selected') {
+        console.warn('⚠️ No model selected, cannot save feedback');
+        return;
+    }
+
+    // Ensure we have content
+    const content = email.full_content || email.preview || email.subject || '';
+
+    if (!content) {
+        console.warn('⚠️ Cannot save feedback - email has no content:', email.id);
+        return; // Silent fail - don't bother user
+    }
+
+    const feedback = [{
+        id: email.id,
+        label: email.prediction,  // Current prediction (which was just changed by feedback)
+        content: content,
+        predicted: email.original_prediction || email.prediction
+    }];
+
+    console.log('💾 Auto-saving feedback:', {
+        id: email.id.substring(0, 20) + '...',
+        label: feedback[0].label,
+        contentLength: content.length
+    });
+
+    try {
+        const response = await fetch('{{ url_for("emails.submit_feedback") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                feedback: feedback,
+                model_name: activeModel  // Include model name in request
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showToast('✅ Feedback saved', 'success');
+            console.log('✅ Feedback saved successfully');
+        } else {
+            console.error('❌ Feedback save failed:', data.error);
+            showToast('⚠️ ' + (data.error || 'Save failed'), 'warning');
+        }
+    } catch (err) {
+        console.error('❌ Error saving feedback:', err);
+    }
+}
+
+// Show toast notification
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    let backgroundColor = 'var(--bg-card)';
+    if (type === 'success') {
+        backgroundColor = 'linear-gradient(135deg, #7bc49a, #6bb88a)';
+    } else if (type === 'warning') {
+        backgroundColor = 'linear-gradient(135deg, #f0be6a, #e5a84d)';
+    } else if (type === 'error') {
+        backgroundColor = 'linear-gradient(135deg, #e88b8b, #d87272)';
+    }
+
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        padding: 0.75rem 1.25rem;
+        background: ${backgroundColor};
+        color: white;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-lg);
+        z-index: 10000;
+        animation: slideInRight 0.3s ease;
+        font-size: 0.9rem;
+        font-weight: 500;
+        max-width: 350px;
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.animation = 'slideOutRight 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Email Detail Modal Functions
+function showEmailDetail(emailId) {
+    const email = emailData.find(e => e.id === emailId);
+    if (!email) return;
+
+    currentEmailId = emailId;
+
+    document.getElementById('modalSubject').textContent = email.subject || 'No Subject';
+    document.getElementById('modalSender').textContent = email.sender || 'Unknown';
+    document.getElementById('modalDate').textContent = email.date || 'Unknown';
+    document.getElementById('modalReceiver').textContent = email.receiver || '-';
+    document.getElementById('modalContent').textContent = email.full_content || email.preview || 'No content available';
+
+    const predBadge = `<span class="prediction-badge ${email.prediction === 'Spam' ? 'spam' : 'ham'}">${email.prediction}</span>`;
+    document.getElementById('modalPrediction').innerHTML = predBadge;
+
+    // Update feedback buttons
+    const feedbackBtns = document.querySelectorAll('#modalFeedback .toggle-btn');
+    feedbackBtns.forEach(btn => {
+        btn.classList.remove('active');
+        const currentFeedback = email.feedback || email.prediction;
+        if (btn.dataset.value === currentFeedback) {
+            btn.classList.add('active');
+        }
+    });
+
+    document.getElementById('emailModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeEmailModal(event) {
+    if (event && event.target !== event.currentTarget) return;
+    document.getElementById('emailModal').classList.remove('active');
+    document.body.style.overflow = '';
+    currentEmailId = null;
+}
+
+function setModalFeedback(value) {
+    if (!currentEmailId) return;
+
+    const email = emailData.find(e => e.id === currentEmailId);
+    if (email) {
+        const oldPrediction = email.prediction;
+        email.feedback = value;
+
+        // Immediately update prediction
+        email.prediction = value;
+
+        // Update modal badge
+        const predBadge = `<span class="prediction-badge ${value === 'Spam' ? 'spam' : 'ham'}">${value}</span>`;
+        document.getElementById('modalPrediction').innerHTML = predBadge;
+
+        // Update modal buttons
+        const feedbackBtns = document.querySelectorAll('#modalFeedback .toggle-btn');
+        feedbackBtns.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.value === value) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Update table row if visible
+        const row = document.querySelector(`tr[data-id="${currentEmailId}"]`);
+        if (row) {
+            const toggleBtns = row.querySelectorAll('.toggle-btn');
+            toggleBtns.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.value === value) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Update prediction badge in table
+            const predictionBadge = row.querySelector('.prediction-badge');
+            if (predictionBadge) {
+                predictionBadge.className = `prediction-badge ${value === 'Spam' ? 'spam' : 'ham'}`;
+                predictionBadge.textContent = value;
+            }
+
+            if (value !== oldPrediction) {
+                row.style.background = 'linear-gradient(90deg, rgba(123, 196, 154, 0.15), transparent)';
+                row.style.borderLeft = '3px solid var(--success)';
+            } else {
+                row.style.background = '';
+                row.style.borderLeft = '';
+            }
+        }
+
+        // Auto-save and update stats
+        autoSaveFeedback(email);
+        updateStats(emailData);
+
+        // Show confirmation in modal
+        showToast('✅ Feedback saved & prediction updated', 'success');
+    }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeEmailModal();
+    }
+});
+
+async function retrainModel() {
+    const activeModel = document.getElementById('activeModelName').textContent;
+    if (activeModel === 'None selected') {
+        alert('❌ Please select a model first!');
+        return;
+    }
+
+    if (!emailData || emailData.length === 0) {
+        alert('❌ No emails available!\n\nPlease fetch emails first.');
+        return;
+    }
+
+    const changedEmails = emailData.filter(email =>
+        email.original_prediction && email.prediction !== email.original_prediction
+    );
+
+    let confirmMsg = '';
+    if (changedEmails.length > 0) {
+        confirmMsg = `🔄 Fine-tune model with ${changedEmails.length} correction${changedEmails.length > 1 ? 's' : ''}?\n\n`;
+        confirmMsg += `The model will be updated using reinforcement learning.\n`;
+        confirmMsg += `This may take a few moments.\n\n`;
+        confirmMsg += `Corrections: ${changedEmails.length}/${emailData.length} emails`;
+    } else {
+        confirmMsg = `ℹ️ No corrections have been made.\n\n`;
+        confirmMsg += `Provide feedback by changing predictions (Ham ↔ Spam) first.`;
+        alert(confirmMsg);
+        return;
+    }
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    const feedback = emailData.map(email => ({
+        id: email.id,
+        label: email.prediction,  // Current prediction (after feedback)
+        content: email.full_content || email.preview || email.subject || '',
+        predicted: email.original_prediction || email.prediction
+    }));
+
+    showLoading(`Fine-tuning model with ${changedEmails.length} corrections...`);
+
+    try {
+        // Trigger RL update - send all data in request (no session dependency)
+        const retrainResponse = await fetch('{{ url_for("emails.retrain_model") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                emails: emailData,
+                model_name: activeModel  // Include model name in request
+            })
+        });
+
+        const retrainData = await retrainResponse.json();
+        hideLoading();
+
+        if (retrainData.success) {
+            let successMsg = '✅ Model fine-tuned successfully!\n\n';
+            if (retrainData.accuracy) {
+                successMsg += `Accuracy: ${(retrainData.accuracy * 100).toFixed(1)}%\n`;
+            }
+            successMsg += `Processed: ${retrainData.total_samples || emailData.length} samples\n`;
+            successMsg += `Corrections: ${retrainData.corrections || changedEmails.length}`;
+
+            alert(successMsg);
+
+            // Update original predictions to match current (corrections are now baseline)
+            emailData.forEach(email => {
+                email.original_prediction = email.prediction;
+            });
+
+            renderEmails(emailData);
+            updateStats(emailData);
+
+            showToast('✅ Model fine-tuned successfully!', 'success');
+        } else {
+            alert('❌ Fine-tuning failed:\n' + retrainData.error);
+        }
+    } catch (err) {
+        hideLoading();
+        alert('❌ Error: ' + err.message);
+    }
+}
+
+function showLoading(text) {
+    document.getElementById('loadingText').textContent = text;
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+// Initialize stats if emails exist
+if (emailData && emailData.length > 0) {
+    updateStats(emailData);
+}
+</script>
+{% endblock %}
+
+
+

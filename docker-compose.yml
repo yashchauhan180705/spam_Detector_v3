@@ -1,0 +1,65 @@
+# Spam Detection System - Docker Compose Configuration
+services:
+  # Model Training Service
+  model-service:
+    build:
+      context: ./model-service
+      dockerfile: Dockerfile
+    container_name: spam-model-service
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./models:/shared/models
+    environment:
+      - MODEL_DIR=/shared/models
+      - PYTHONUNBUFFERED=1
+    networks:
+      - spam-network
+    restart: unless-stopped
+
+  # Prediction Service
+  prediction-service:
+    build:
+      context: ./prediction-service
+      dockerfile: Dockerfile
+    container_name: spam-prediction-service
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./models:/shared/models
+    environment:
+      - MODEL_DIR=/shared/models
+      - MODEL_SERVICE_URL=http://model-service:5001
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - model-service
+    networks:
+      - spam-network
+    restart: unless-stopped
+
+  # UI Gateway Service
+  ui-gateway-service:
+    build:
+      context: ./ui-gateway-service
+      dockerfile: Dockerfile
+    container_name: spam-ui-gateway
+    ports:
+      - "5000:5000"
+    environment:
+      - MODEL_SERVICE_URL=http://model-service:5001
+      - PREDICTION_SERVICE_URL=http://prediction-service:5002
+      - SECRET_KEY=spam-detection-secret-key
+      - DEBUG=False
+      - HOST=0.0.0.0
+      - PORT=5000
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - model-service
+      - prediction-service
+    networks:
+      - spam-network
+    restart: unless-stopped
+
+networks:
+  spam-network:
+    driver: bridge

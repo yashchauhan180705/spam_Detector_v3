@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Create Model - SpamShield{% endblock %}
+{% block page_title %}Create New Model{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    <h2 class="section-title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Create New Model
+    </h2>
+    <p class="section-desc">Train a new DQN spam detection model with your dataset</p>
+</div>
+
+<section class="form-section animate-slideUp">
+    <form action="{{ url_for('models.create_model') }}" method="POST" enctype="multipart/form-data" id="trainForm">
+        <div class="form-group">
+            <label class="form-label" for="dataset">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.25rem;">
+                    <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/>
+                    <polyline points="13 2 13 9 20 9"/>
+                </svg>
+                Upload Dataset
+            </label>
+            <input type="file" id="dataset" name="dataset" class="form-input" accept=".csv,.xlsx,.xls,.json" required style="padding: 0.5rem;">
+            <p class="form-hint">Supported formats: CSV, Excel, JSON</p>
+        </div>
+
+        <div id="datasetPreview" class="hidden" style="background: var(--bg-tertiary); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+            <h4 style="margin-bottom: 0.75rem; color: var(--text-primary);">Dataset Preview</h4>
+            <div id="previewTable"></div>
+            <p id="datasetInfo" style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;"></p>
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="text_column">📝 Text Column</label>
+                <select id="text_column" name="text_column" class="form-select" required disabled>
+                    <option value="">Select column...</option>
+                </select>
+                <p class="form-hint">Column containing email content</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="label_column">🏷️ Label Column</label>
+                <select id="label_column" name="label_column" class="form-select" required disabled>
+                    <option value="">Select column...</option>
+                </select>
+                <p class="form-hint">Column containing spam/ham labels</p>
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label" for="model_name">📛 Model Name</label>
+                <input type="text" id="model_name" name="model_name" class="form-input" value="spam_model" required
+                       pattern="[a-zA-Z0-9_-]+" title="Use only letters, numbers, underscores, and hyphens">
+                <p class="form-hint">Unique name for your model</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="timesteps">🔄 Training Steps</label>
+                <input type="number" id="timesteps" name="timesteps" class="form-input" value="50000"
+                       min="1000" max="1000000" step="1000" required>
+                <p class="form-hint">More steps = better accuracy (but slower)</p>
+            </div>
+        </div>
+
+        <div class="hidden" id="trainingWarning" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem; color: var(--warning-light);">
+            ⚠️ Training with more than 200,000 steps may take a long time (10+ minutes).
+        </div>
+
+        <div class="form-actions">
+            <a href="{{ url_for('models.list_models') }}" class="btn btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="19" y1="12" x2="5" y2="12"/>
+                    <polyline points="12 19 5 12 12 5"/>
+                </svg>
+                Cancel
+            </a>
+            <button type="submit" class="btn btn-primary" id="trainBtn" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                Start Training
+            </button>
+        </div>
+    </form>
+</section>
+
+<section class="info-section animate-slideUp">
+    <h3>📋 Dataset Requirements</h3>
+    <ul>
+        <li><strong>Two columns required:</strong> Text content and labels</li>
+        <li><strong>Binary labels:</strong> e.g., "spam"/"ham", 0/1, "Spam"/"Ham"</li>
+        <li><strong>Minimum samples:</strong> 100+ recommended for meaningful training</li>
+        <li><strong>CSV format:</strong> Use comma as delimiter</li>
+    </ul>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('dataset').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('dataset', file);
+
+    try {
+        const response = await fetch('{{ url_for("models.preview_columns") }}', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            alert('Error: Failed to read file. ' + errorText);
+            return;
+        }
+
+        const data = await response.json();
+
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+
+        const textSelect = document.getElementById('text_column');
+        const labelSelect = document.getElementById('label_column');
+
+        textSelect.innerHTML = '<option value="">Select column...</option>';
+        labelSelect.innerHTML = '<option value="">Select column...</option>';
+
+        data.columns.forEach(col => {
+            textSelect.innerHTML += `<option value="${col}">${col}</option>`;
+            labelSelect.innerHTML += `<option value="${col}">${col}</option>`;
+        });
+
+        textSelect.disabled = false;
+        labelSelect.disabled = false;
+
+        document.getElementById('datasetInfo').textContent = `Rows: ${data.rows} | Columns: ${data.columns.length}`;
+        document.getElementById('datasetPreview').classList.remove('hidden');
+        document.getElementById('trainBtn').disabled = false;
+
+    } catch (err) {
+        console.error('Error details:', err);
+        alert('Error reading file: ' + err.message);
+    }
+});
+
+document.getElementById('timesteps').addEventListener('change', function(e) {
+    const warning = document.getElementById('trainingWarning');
+    if (e.target.value > 200000) {
+        warning.classList.remove('hidden');
+    } else {
+        warning.classList.add('hidden');
+    }
+});
+
+document.getElementById('trainForm').addEventListener('submit', function(e) {
+    const btn = document.getElementById('trainBtn');
+    btn.disabled = true;
+    btn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin" style="animation: spin 1s linear infinite;">
+            <line x1="12" y1="2" x2="12" y2="6"/>
+            <line x1="12" y1="18" x2="12" y2="22"/>
+            <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/>
+            <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
+            <line x1="2" y1="12" x2="6" y2="12"/>
+            <line x1="18" y1="12" x2="22" y2="12"/>
+            <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/>
+            <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
+        </svg>
+        Training... Please wait`;
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - SpamShield{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<section class="hero animate-slideUp">
+    <div class="hero-content">
+        <h1>🛡️ Advanced Email Spam Detector</h1>
+        <p class="hero-subtitle">Powered by Deep Q-Network Reinforcement Learning</p>
+    </div>
+</section>
+
+<section class="features">
+    <div class="section-header">
+        <h2 class="section-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            Key Features
+        </h2>
+    </div>
+    <div class="feature-grid">
+        <div class="feature-card animate-slideUp stagger-1">
+            <div class="feature-icon">🤖</div>
+            <h3>DQN-Based Learning</h3>
+            <p>Uses Deep Q-Network reinforcement learning to continuously improve spam detection accuracy through feedback.</p>
+        </div>
+        <div class="feature-card animate-slideUp stagger-2">
+            <div class="feature-icon">📧</div>
+            <h3>Email Integration</h3>
+            <p>Directly connect to your email via IMAP to fetch and analyze emails for spam detection.</p>
+        </div>
+        <div class="feature-card animate-slideUp stagger-3">
+            <div class="feature-icon">🔄</div>
+            <h3>Feedback Learning</h3>
+            <p>Provide feedback on predictions to retrain models using replay buffer RL updates.</p>
+        </div>
+        <div class="feature-card animate-slideUp stagger-4">
+            <div class="feature-icon">🏗️</div>
+            <h3>Microservices</h3>
+            <p>Built on scalable microservices architecture for high availability and performance.</p>
+        </div>
+    </div>
+</section>
+
+<section class="workflow">
+    <div class="section-header">
+        <h2 class="section-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+            How It Works
+        </h2>
+    </div>
+    <div class="workflow-steps">
+        <div class="step animate-slideUp stagger-1">
+            <div class="step-number">1</div>
+            <h4>Train Model</h4>
+            <p>Upload a labeled spam/ham dataset to train a new DQN model.</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step animate-slideUp stagger-2">
+            <div class="step-number">2</div>
+            <h4>Select Model</h4>
+            <p>Choose an active model from your trained models for predictions.</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step animate-slideUp stagger-3">
+            <div class="step-number">3</div>
+            <h4>Analyze Emails</h4>
+            <p>Fetch emails or paste content to get spam/ham predictions.</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step animate-slideUp stagger-4">
+            <div class="step-number">4</div>
+            <h4>Provide Feedback</h4>
+            <p>Correct any wrong predictions to improve the model.</p>
+        </div>
+        <div class="step-arrow">→</div>
+        <div class="step animate-slideUp stagger-5">
+            <div class="step-number">5</div>
+            <h4>RL Update</h4>
+            <p>Update the model using replay buffer reinforcement learning.</p>
+        </div>
+    </div>
+</section>
+
+<section class="dqn-info">
+    <div class="section-header">
+        <h2 class="section-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2a10 10 0 1010 10A10 10 0 0012 2z"/>
+                <path d="M12 8v4l3 3"/>
+            </svg>
+            DQN Reinforcement Learning
+        </h2>
+    </div>
+    <div class="info-content">
+        <div class="info-text">
+            <p style="color: var(--text-primary); margin-bottom: 1rem;"><strong>Deep Q-Network (DQN)</strong> is a type of reinforcement learning algorithm that combines:</p>
+            <ul>
+                <li><strong>Q-Learning:</strong> A value-based method for learning optimal actions</li>
+                <li><strong>Deep Neural Networks:</strong> For approximating the Q-value function</li>
+                <li><strong>Experience Replay:</strong> For stable training with diverse samples</li>
+            </ul>
+            <p style="color: var(--text-primary); margin: 1rem 0 0.5rem;">In spam detection, the DQN agent learns to:</p>
+            <ul>
+                <li>Observe email features (TF-IDF vectorized content)</li>
+                <li>Take actions (classify as Spam or Ham)</li>
+                <li>Receive rewards (correct = +1, incorrect = -1)</li>
+                <li>Improve policy through training iterations</li>
+            </ul>
+        </div>
+        <div class="diagram-box">
+            <h4>DQN Agent Flow</h4>
+            <div class="diagram-flow">
+                <div class="diagram-item">📧 Email</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-item">🔤 TF-IDF Vectorization</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-item">🧠 DQN Neural Network</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-item">🎯 Action: Spam/Ham</div>
+                <div class="diagram-arrow">↓</div>
+                <div class="diagram-item">🏆 Reward Signal</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="architecture">
+    <div class="section-header">
+        <h2 class="section-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="21" x2="9" y2="9"/>
+            </svg>
+            Microservices Architecture
+        </h2>
+    </div>
+    <div class="arch-diagram">
+        <div class="arch-layer">
+            <div class="arch-box arch-gateway animate-slideUp">
+                <h4>UI Gateway Service</h4>
+                <p>Flask • Port 5000</p>
+                <small>UI + API Gateway</small>
+            </div>
+        </div>
+        <div class="arch-connector">↓ ↓</div>
+        <div class="arch-layer arch-services">
+            <div class="arch-box arch-model animate-slideUp stagger-1">
+                <h4>Model Service</h4>
+                <p>Flask • Port 5001</p>
+                <small>Training & RL Updates</small>
+            </div>
+            <div class="arch-box arch-prediction animate-slideUp stagger-2">
+                <h4>Prediction Service</h4>
+                <p>Flask • Port 5002</p>
+                <small>Spam Detection</small>
+            </div>
+        </div>
+        <div class="arch-connector">↓ ↓</div>
+        <div class="arch-layer">
+            <div class="arch-box arch-storage animate-slideUp stagger-3">
+                <h4>Shared Model Storage</h4>
+                <p>Volume Mount</p>
+                <small>DQN Models + Replay Buffer</small>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="cta animate-slideUp">
+    <h2>Ready to Get Started?</h2>
+    <p>Create a model and start detecting spam emails with AI-powered analysis.</p>
+    <div class="cta-buttons">
+        <a href="{{ url_for('models.list_models') }}" class="btn btn-primary btn-lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+            </svg>
+            Manage Models
+        </a>
+        <a href="{{ url_for('emails.email_analysis') }}" class="btn btn-secondary btn-lg">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Analyze Emails
+        </a>
+    </div>
+</section>
+{% endblock %}
+

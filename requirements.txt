@@ -1,0 +1,16 @@
+# Root requirements.txt - For reference only
+# Each service has its own requirements.txt:
+# - ui-gateway-service/requirements.txt
+# - model-service/requirements.txt
+# - prediction-service/requirements.txt
+
+# Common dependencies across services:
+flask
+requests
+pandas
+numpy
+scikit-learn
+joblib
+gymnasium
+stable-baselines3
+python-dotenv
