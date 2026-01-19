@@ -1,0 +1,81 @@
+version: 2
+updates:
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+
+  # Docker dependencies for model-service
+  - package-ecosystem: "docker"
+    directory: "/model-service"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "model-service"
+
+  # Docker dependencies for prediction-service
+  - package-ecosystem: "docker"
+    directory: "/prediction-service"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "prediction-service"
+
+  # Docker dependencies for ui-gateway-service
+  - package-ecosystem: "docker"
+    directory: "/ui-gateway-service"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "ui-gateway-service"
+
+  # Python dependencies for model-service
+  - package-ecosystem: "pip"
+    directory: "/model-service"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "python"
+      - "model-service"
+    allow:
+      - dependency-type: "all"
+    open-pull-requests-limit: 10
+
+  # Python dependencies for prediction-service
+  - package-ecosystem: "pip"
+    directory: "/prediction-service"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "python"
+      - "prediction-service"
+    allow:
+      - dependency-type: "all"
+    open-pull-requests-limit: 10
+
+  # Python dependencies for ui-gateway-service
+  - package-ecosystem: "pip"
+    directory: "/ui-gateway-service"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "python"
+      - "ui-gateway-service"
+    allow:
+      - dependency-type: "all"
+    open-pull-requests-limit: 10
