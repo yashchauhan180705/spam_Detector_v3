@@ -1,1 +1,1 @@
-{\n  "version": 2,\n  "builds": [\n    {\n      "src": "ui-gateway-service/app.py",\n      "use": "@vercel/python"\n    }\n  ],\n  "routes": [\n    {\n      "src": "/(.*)",\n      "dest": "ui-gateway-service/app.py"\n    }\n  ]\n}
+{"version":2,"builds":[{"src":"ui-gateway-service/app.py","use":"@vercel/python"}],"routes":[{"src":"/(.*)","dest":"ui-gateway-service/app.py"}]}
