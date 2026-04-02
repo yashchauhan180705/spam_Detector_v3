@@ -1,5 +1,9 @@
 # Spam Detection System - Docker Setup
 
+[![CI Pipeline](https://github.com/yashchauhan180705/spam_Detector_v3/actions/workflows/ci.yml/badge.svg)](https://github.com/yashchauhan180705/spam_Detector_v3/actions/workflows/ci.yml)
+[![Docker Publish](https://github.com/yashchauhan180705/spam_Detector_v3/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/yashchauhan180705/spam_Detector_v3/actions/workflows/docker-publish.yml)
+[![Code Quality](https://github.com/yashchauhan180705/spam_Detector_v3/actions/workflows/code-quality.yml/badge.svg)](https://github.com/yashchauhan180705/spam_Detector_v3/actions/workflows/code-quality.yml)
+
 A microservices-based spam email detection system using reinforcement learning, fully containerized with Docker.
 
 ## 🏗️ Architecture
@@ -203,7 +207,31 @@ docker volume prune
 - **ML Libraries**: scikit-learn, stable-baselines3, gymnasium
 - **Data Processing**: pandas, numpy
 - **Containerization**: Docker, Docker Compose
+- **CI/CD**: GitHub Actions
 - **Python**: 3.11
+
+## 🔄 CI/CD
+
+This project includes comprehensive CI/CD pipelines using GitHub Actions:
+
+- **Continuous Integration**: Automated testing, linting, and Docker builds on every push/PR
+- **Docker Publishing**: Automatic image builds and publishing to GitHub Container Registry
+- **Code Quality**: Security scanning, dependency checks, and code quality analysis
+- **Deployment**: Template for automated deployments (requires configuration)
+
+For detailed information, see [CI/CD Documentation](CI_CD.md).
+
+### Quick CI/CD Commands
+
+```bash
+# Run linting locally
+pip install flake8
+flake8 .
+
+# Test Docker builds locally
+docker-compose build
+docker-compose up
+```
 
 ## 🔐 Security Notes
 
